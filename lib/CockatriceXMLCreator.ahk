@@ -28,7 +28,7 @@ class CockatriceXMLCreator {
 	
 	;new entities
 	newCardEntity(incomingName,autoChangeToNewEntity := 1){
-		if this.gameEntity["cards"].HasKey(incomingName)
+		if this.gameEntity["cards"].Has(incomingName)
 			return
 		
 		;construct the basic card object
@@ -49,7 +49,7 @@ class CockatriceXMLCreator {
 			this.changeCardEntity(incomingName)
 	}
 	newSetEntity(incomingName,autoChangeToNewEntity := 1){
-		if this.gameEntity["sets"].HasKey(incomingName)
+		if this.gameEntity["sets"].Has(incomingName)
 			return
 		
 		;construct the basic set object
@@ -79,7 +79,7 @@ class CockatriceXMLCreator {
 	setMajorCardProp(propName,propValue, nameOfCardEntity := ""){
 		if (nameOfCardEntity="")
 			nameOfCardEntity := this.currentCard
-		this.gameEntity["cards"][nameOfCardEntity,propName] := propValue
+		this.gameEntity["cards"][nameOfCardEntity][propName] := propValue
 	}
 	setCardProp(propName,propValue, nameOfCardEntity := ""){
 		if (nameOfCardEntity="")
@@ -99,8 +99,10 @@ class CockatriceXMLCreator {
 		;pseudocode template: <set setArr["prop1"]="abc" setArr["prop2"]="xyz">visibleSetCode</set>
 		if (nameOfCardEntity="")
 			nameOfCardEntity := this.currentCard
-		this.gameEntity["cards"][nameOfCardEntity]["sets"].push(setArr)	;should start from 1
-		this.gameEntity["cards"][nameOfCardEntity]["sets"][0][(this.gameEntity["cards"][nameOfCardEntity]["sets"].count()-1)] := visibleSetCode
+		; sets := this.gameEntity["cards"][nameOfCardEntity]["sets"]
+		sets := this.gameEntity["cards"][nameOfCardEntity]["sets"]
+		sets[sets.count] := setArr	;should start from 1
+		this.gameEntity["cards"][nameOfCardEntity]["sets"][0][(this.gameEntity["cards"][nameOfCardEntity]["sets"].count-1)] := visibleSetCode
 	}
 	attachRelatedCard(relatedCard,relatedCardObj,nameOfCardEntity := ""){
 		;attaches relatedCard to nameOfCardEntity
@@ -230,7 +232,7 @@ class CockatriceXMLCreator {
 		;bodyEnd := 
 	}
 	embedImage(imgPath,styleObj := ""){
-		if this.base64.HasKey(imgPath)	;image already processed into memory
+		if this.base64.Has(imgPath)	;image already processed into memory
 			return "<img src='data:image/png;base64," this.base64[imgPath] "' /></img>"
 		
 		rawData := Buffer(FileGetSize(imgPath))
@@ -297,7 +299,7 @@ class CockatriceXMLCreator {
 		;pass in any object and it will return a style string with all matching keys
 		
 		for k,v in ["background-color","font-weight","text-align","vertical-align"]
-			if styleObj.HasKey(v)
+			if styleObj.Has(v)
 				styleStr .= v ":" styleObj[v] ";"
 		
 		if (styleStr != "")
@@ -319,7 +321,7 @@ class CockatriceXMLCreator {
 	}
 	
 	;XML generation
-	generateXML(infoObj := ""){
+	generateXML(infoObj := []){
 		;ret := this.generateXML_header(infoObj)
 		;ret .= this.generateXML_sets()
 		;ret .= this.generateXML_cards()
@@ -339,7 +341,7 @@ class CockatriceXMLCreator {
 		}
 		return ret
 	}
-	generateXML_header(infoObj := ""){
+	generateXML_header(infoObj := []){
 		this.xmlInProgress.push('<?xml version="1.0" encoding="UTF-8"?>`n')
 		this.xmlInProgress.push('<cockatrice_carddatabase version="4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://raw.githubusercontent.com/Cockatrice/Cockatrice/master/doc/carddatabase_v4/cards.xsd">`n')
 		this.xmlInProgress.push(a_tab "<info>`n")
@@ -353,9 +355,9 @@ class CockatriceXMLCreator {
 		for k,v in this.gameEntity["sets"]{
 			set := k
 			this.xmlInProgress.push(a_tab a_tab "<set>`n")
-			for k,v in this.gameEntity["sets",set]{
+			for k,v in this.gameEntity["sets"][set]{
 				if (v!="")
-					this.xmlInProgress.push(a_tab a_tab a_tab "<" this.UnicodeToXML(k) ">" this.UnicodeToXML(v) "</" this.UnicodeToXML(k) ">`n")
+					this.xmlInProgress.push(a_tab a_tab a_tab "<" this.UnicodeToXML(&k) ">" this.UnicodeToXML(&v) "</" this.UnicodeToXML(&k) ">`n")
 			}
 			this.xmlInProgress.push(a_tab a_tab "</set>`n")
 		}
@@ -367,43 +369,43 @@ class CockatriceXMLCreator {
 		for k,v in this.gameEntity["cards"]{
 			card := k
 			this.xmlInProgress.push(a_tab a_tab "<card>`n")
-			for k,v in this.gameEntity["cards",card]{
+			for k,v in this.gameEntity["cards"][card]{
 				majProp := k
 				switch majProp {
 					case "cipt","token","upsidedown":
 						if (v != 0)
-							this.xmlInProgress.push(a_tab a_tab a_tab "<" k ">" this.UnicodeToXML(v) "</" k ">`n")
+							this.xmlInProgress.push(a_tab a_tab a_tab "<" k ">" this.UnicodeToXML(&v) "</" k ">`n")
 					case "props":
 						this.xmlInProgress.push(a_tab a_tab a_tab "<prop>`n")
-						for k,v in this.gameEntity["cards",card,"props"]{
-							this.xmlInProgress.push(a_tab a_tab a_tab a_tab "<" k ">" this.UnicodeToXML(v) "</" k ">`n")
+						for k,v in this.gameEntity["cards"][card]["props"]
+							this.xmlInProgress.push(a_tab a_tab a_tab a_tab "<" k ">" this.UnicodeToXML(&v) "</" k ">`n")
 						this.xmlInProgress.push(a_tab a_tab a_tab "</prop>`n")						
-					}
 					case "related":
-						for k,v in this.gameEntity["cards",card,"related"]{
+						for k,v in this.gameEntity["cards"][card]["related"]{
 							relatedCard := k
 							relStr := ""
-							for k,v in this.gameEntity["cards",card,"related",relatedCard]{
+							for k,v in this.gameEntity["cards"][card]["related"][relatedCard]{
 								relStr .= a_space k "=" chr(34) v chr(34)
 							}
-							this.xmlInProgress.push(a_tab a_tab a_tab "<related" relStr ">" this.UnicodeToXML(relatedCard) "</related>`n")							
+							this.xmlInProgress.push(a_tab a_tab a_tab "<related" relStr ">" this.UnicodeToXML(&relatedCard) "</related>`n")							
 						}
 					case "reverse-related" :
 						;todo
 					case "sets" : 
-						for k,v in this.gameEntity["cards",card,"sets",0]{
+						for k,v in this.gameEntity["cards"][card]["sets"][0]{
 							;msgbox % st_printArr(this.gameEntity["cards",card,"sets",0])
 							setIndex := k
 							setCode := v
 							setAttributes := ""
-							for k,v in this.gameEntity["cards",card,"sets",setIndex]{
+							; msgbox JSON.Dump(this.gameEntity["cards"][card]["sets"])
+							for k,v in this.gameEntity["cards"][card]["sets"][setIndex]{
 								;do NOT push this one to xmlInProgress
-								setAttributes .= a_space k "=" chr(34) this.UnicodeToXML(v) chr(34)
+								setAttributes .= a_space k "=" chr(34) this.UnicodeToXML(&v) chr(34)
 							}
-							this.xmlInProgress.push(a_tab a_tab a_tab "<set" setAttributes ">" this.UnicodeToXML(setCode) "</set>`n")
+							this.xmlInProgress.push(a_tab a_tab a_tab "<set" setAttributes ">" this.UnicodeToXML(&setCode) "</set>`n")
 						}
 					default: 
-						this.xmlInProgress.push(a_tab a_tab a_tab "<" k ">" this.UnicodeToXML(StrReplace(StrReplace(v,"`r"),"`n","<br>")) "</" k ">`n")
+						this.xmlInProgress.push(a_tab a_tab a_tab "<" k ">" this.UnicodeToXML(&z := StrReplace(StrReplace(v,"`r"),"`n","<br>")) "</" k ">`n")
 				}
 				
 			}
