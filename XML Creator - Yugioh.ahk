@@ -112,6 +112,7 @@ for k,v in CardObj {
     ; MsgBox Type(record["card_sets"]) A_Clipboard := JSON.Dump(record)
     ; continue
     try {
+
         for k,v in record["card_sets"]{
             setRecord := record["card_sets"][k]
             setArr := Map("rarity", setRecord["set_rarity"])
@@ -142,7 +143,7 @@ for k,v in CardObj {
 }
 
 outXml := cxml.generateXML()
-A_Clipboard := outXml
+FileOpen(A_ScriptDir "\cxml\Yu-Gi-Oh\data\cards.xml","w").Write(outXml)
 ; Sleep(3000)
 gxml.Destroy()
 ExitApp
@@ -194,5 +195,3 @@ sortSetsByDate(setObj){
     ; MsgBox A_Clipboard := JSON.Dump(retObj)
     return retObj
 }
-
-^`::ExitApp

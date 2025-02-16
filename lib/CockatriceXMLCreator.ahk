@@ -431,10 +431,13 @@ class CockatriceXMLCreator {
 		{
 			checkOrd := ord(A_LoopField)
 			switch checkOrd {
-				case 34,38,39,60,62,checkOrd>126 :
+				case 34,38,39,60,62 :
 					UnicodeStringNew .= "&#" checkOrd ";"
 				default:
-					UnicodeStringNew .= a_loopfield
+					If !(checkOrd>126)
+						UnicodeStringNew .= a_loopfield
+					else
+						UnicodeStringNew .= "&#" checkOrd ";"
 			}
 			; if IfIn(checkOrd,specificOrds) || (checkOrd > 126){
 			; 	UnicodeStringNew .= "&#" checkOrd ";"

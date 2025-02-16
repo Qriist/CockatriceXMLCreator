@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cockatrice_carddatabase version="4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://raw.githubusercontent.com/Cockatrice/Cockatrice/master/doc/carddatabase_v4/cards.xsd">
+	<info>
+	</info>
+	<sets>
+		<set>
+			<longname>Zexal Collection Tin</longname>
+			<name>ZTIN</name>
+			<releasedate>2013-03-07</releasedate>
+		</set>
+</sets>
+<cards>
+		<card>
+			<name>&#34;A&#34; Cell Breeding Device</name>
+			<prop>
+				<Archetype>Alien</Archetype>
+				<ID>34541863</ID>
+				<Konami_ID>7128</Konami_ID>
+				<Race>Continuous</Race>
+				<Type>Spell Card</Type>
+				<cmc>0</cmc>
+				<colors>NORMAL</colors>
+			</prop>
+			<set rarity="Common">FOTB</set>
+			<set picURL="https://images.ygoprodeck.com/images/cards/34541863.jpg" uuid="385FB333E738D1B7D4B1B66997FF97C5B6AC5EDF06BA3DCEE44730630E054ACC5F7C0C8D4519C1265ABFCF482816CAF02DFD4AFDF0A05E92A58628ED6698BE19">°34541863.1</set>
+			<tablerow>3</tablerow>
+			<text>During each of your Standby Phases, put 1 A-Counter on 1 face-up monster your opponent controls.</text>
+		</card>
+	</cards>
+</cockatrice_carddatabase>
