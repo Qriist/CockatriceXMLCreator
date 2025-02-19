@@ -242,7 +242,7 @@ for k,v in CardObj
 			}
 			out .= "</ul>"
 			;msgbox % out
-			outCheck := RegexMatchGlobal(out,"(「*<<(\d+)>>」*)",0)
+			outCheck := RegExMatchAll(out,"(「*<<(\d+)>>」*)",0)
 			for k,v in outCheck{
 				numFull := v[1]
 				,num := v[2]

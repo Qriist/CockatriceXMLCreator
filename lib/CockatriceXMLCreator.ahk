@@ -21,8 +21,11 @@ class CockatriceXMLCreator {
 		this.gameEntity["game"] := incomingGameEntityName
 		this.gameEntity["cards"] := Map()
 		this.gameEntity["sets"] := Map()
-		this.gameEntity["relationships"] := Map()
+		this.gameEntity["related"] := Map()
+		this.gameEntity["reverse-related"] := Map()
 		this.currentCardEntity := Map()
+		this.g()
+		this.checkForCkInstall()
     }
 	
 	
@@ -30,7 +33,7 @@ class CockatriceXMLCreator {
 	newCardEntity(incomingName,autoChangeToNewEntity := 1){
 		if this.gameEntity["cards"].Has(incomingName)
 			return
-		
+
 		;construct the basic card object
 		card := this.gameEntity["cards"][incomingName] := Map()
 		card["name"] := incomingName
@@ -58,7 +61,7 @@ class CockatriceXMLCreator {
 		set["longname"] := ""
 		set["settype"] := ""
 		set["releasedate"] := ""
-		
+
 		if (autoChangeToNewEntity = 1)
 			this.changeSetEntity(incomingName)
 	}
@@ -76,19 +79,16 @@ class CockatriceXMLCreator {
 	
 	
 	;setting an entity property
-	setMajorCardProp(propName,propValue, nameOfCardEntity := ""){
-		if (nameOfCardEntity="")
-			nameOfCardEntity := this.currentCard
+	setMajorCardProp(propName,propValue, nameOfCardEntity?){
+		nameOfCardEntity ??= this.currentCard
 		this.gameEntity["cards"][nameOfCardEntity][propName] := propValue
 	}
-	setCardProp(propName,propValue, nameOfCardEntity := ""){
-		if (nameOfCardEntity="")
-			nameOfCardEntity := this.currentCard
+	setCardProp(propName,propValue, nameOfCardEntity?){
+		nameOfCardEntity ??= this.currentCard
 		this.gameEntity["cards"][nameOfCardEntity]["props"][propName] := propValue
 	}
-	setSetProp(propName, propValue, nameOfSetEntity := ""){
-		if (nameOfSetEntity = "")
-			nameOfSetEntity := this.currentSet
+	setSetProp(propName, propValue, nameOfSetEntity?){
+		nameOfSetEntity ??= this.currentSet
 		this.gameEntity["sets"][nameOfSetEntity][propName] := propValue
 	}
 	attachSetToCard(visibleSetCode,setArr,nameOfCardEntity := ""){
@@ -108,13 +108,13 @@ class CockatriceXMLCreator {
 		;attaches relatedCard to nameOfCardEntity
 		if (nameOfCardEntity="")
 			nameOfCardEntity := this.currentCard
-		this.gameEntity["cards"][nameOfCardEntity]["relationships"]["related"][relatedCard] := relatedCardObj
+		this.gameEntity["cards"][nameOfCardEntity]["related"][relatedCard] := relatedCardObj
 	}
 	attachReverseRelatedCard(rRelatedCard,rRelatedCardObj,nameOfCardEntity := ""){
 		;attaches rRelatedCard card to nameOfCardEntity
 		if (nameOfCardEntity="")
 			nameOfCardEntity := this.currentCard
-		this.gameEntity["cards"][nameOfCardEntity]["relationships"]["reverse-related"][rRelatedCard] := rRelatedCardObj
+		this.gameEntity["cards"][nameOfCardEntity]["reverse-related"][rRelatedCard] := rRelatedCardObj
 	}
 	
 	;appending to a property
@@ -247,34 +247,45 @@ class CockatriceXMLCreator {
 		if !InStr(dedupe,inText)
 			return "<!--" inText "-->"
 	}
-	addTable(tableObj,colRowObj := ""){
+	addTable(tableObj,colRowObj?){
 		;format any number of outer objects (rows) plus any number of nested inner keys (columns) into an HTML table
 		;all font processing should be done as the tableObj is built
 		;backgroundObj is used to set the background color of a specific cell
 		;example backgroundObj key:  {"4|2" : "green"}  where "4|2" corresponds to row 4 and column 2
 		
-		if (tableObj.count() = 0)	;nothing to do
+		if (tableObj.count = 0)	;nothing to do
 			return
 		
+		; If !IsSet(colRowObj){
+		; 	colRowObj := Map("row",Map())
+		; }
+
 		body := "<table>"
-		loop tableObj.count(){
-			rowIndex := a_index			
-			body .= "<tr " this.StyleOptions(colRowObj["row"][rowIndex]) ">"
-			loop tableObj[rowIndex].count(){
+		loop tableObj.count {
+			rowIndex := a_index
+
+			; try
+			; body .= "<tr " colRowObj["row"][rowIndex] ">"
+			body .= "<tr " rowIndex ">"
+			loop tableObj[rowIndex].count{
 				colIndex := a_index
 				
-				if (tableObj[rowIndex][colIndex]["colspan"] != "")
+				if tableObj[rowIndex][colIndex].has("colspan")
 					colspan := a_space "colspan=" tableObj[rowIndex][colIndex]["colspan"]
-				if (tableObj[rowIndex][colIndex]["rowspan"] != "")
+				if tableObj[rowIndex][colIndex].has("rowspan")
 					rowspan := a_space "rowspan=" tableObj[rowIndex][colIndex]["rowspan"]
+				
+				try
 				for k,v in ["backgound-color"]["font-weight"]{
 					
 				}
-				if (style != "")
-					style := "style=" chr(34) style chr(34)
+				; if (style != "")
+				; 	style := "style=" chr(34) style chr(34)
 				;if (tableObj[rowIndex,colIndex,"background-color"] != "")
 					;bgcolor := a_space "style=" chr(34) "background-color:" tableObj[rowIndex,colIndex,"background-color"] ";" chr(34)
-				body .= "<td" colspan rowspan this.StyleOptions(tableObj[rowIndex][colIndex]) ">" tableObj[rowIndex][colIndex]["text"] "</td>"
+				; try
+				; body .= "<td" colspan rowspan this.StyleOptions(tableObj[rowIndex][colIndex]) ">" tableObj[rowIndex][colIndex]["text"] "</td>"
+				body .= "<td" (IsSet(colspan)?colspan:"") (IsSet(rowspan)?rowspan:"") this.styleOptions(tableObj[rowIndex][colIndex]) ">" tableObj[rowIndex][colIndex]["text"] "</td>"
 				
 				;msgbox % "<td" colspan ">" tableObj[rowIndex,colIndex,"text"] "</td>"
 				style := colspan := ""	;reset values
@@ -298,6 +309,7 @@ class CockatriceXMLCreator {
 	styleOptions(styleObj){
 		;pass in any object and it will return a style string with all matching keys
 		
+		styleStr := ""
 		for k,v in ["background-color","font-weight","text-align","vertical-align"]
 			if styleObj.Has(v)
 				styleStr .= v ":" styleObj[v] ";"
@@ -331,17 +343,25 @@ class CockatriceXMLCreator {
 		this.xmlInProgress := []
 		this.generateXML_header(infoObj)
 		this.generateXML_sets()
+		this.generateXML_related()
 		this.generateXML_cards()
 		this.generateXML_footer()
-		ret := ""
-		VarSetStrCapacity(&ret,this.xmlsize)
+		xml := ""
+		VarSetStrCapacity(&xml,this.xmlsize)
 		;msgbox % 
 		for k,v in this.xmlInProgress {
-			ret .= this.xmlInProgress[k]
+			xml .= this.xmlInProgress[k]
 		}
-		return ret
+
+		FileOpen(A_ScriptDir "\cxml\" this.gameEntity["game"] "\data\cards.xml","w").Write(xml)
+
+		;compress for release
+		;todo - actually compress
+		DirCreate(A_ScriptDir "\output\")
+		FileOpen(A_ScriptDir "\output\" this.gameEntity["game"] ".xml","w").Write(xml)
+		return
 	}
-	generateXML_header(infoObj := []){
+	generateXML_header(infoObj := Map()){
 		this.xmlInProgress.push('<?xml version="1.0" encoding="UTF-8"?>`n')
 		this.xmlInProgress.push('<cockatrice_carddatabase version="4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://raw.githubusercontent.com/Cockatrice/Cockatrice/master/doc/carddatabase_v4/cards.xsd">`n')
 		this.xmlInProgress.push(a_tab "<info>`n")
@@ -363,6 +383,11 @@ class CockatriceXMLCreator {
 		}
 		this.xmlInProgress.push("</sets>`n")
 		
+	}
+	generateXML_related(){
+		; for k,v in this.gameEntity["related"] {
+		; 	this.["cards"][k]["related"][v] := ""
+		; }
 	}
 	generateXML_cards(){
 		this.xmlInProgress.push("<cards>`n")
@@ -447,5 +472,26 @@ class CockatriceXMLCreator {
 		}
 		return UnicodeStringNew
 	}
-	
+	g(){
+		this.gui := Gui()
+		this.gui.title := this.gameEntity["game"] " XML Creator"
+		this.gui.Opt("+Resize +MinSize250")
+		this.gt1 := this.gui.Add("Text","w300 BackgroundTrans center vtext1","")
+		this.gt2 := this.gui.Add("Text","w300 BackgroundTrans center vtext2","")
+		this.gt3 := this.gui.Add("Text","w300 BackgroundTrans center vtext3","")
+		this.gui.Show("autosize center")
+	}
+	gtext(line,text := ""){
+		this.gt%line%.text := text
+	}
+	checkForCkInstall(){
+		ckpath := A_ScriptDir "\cxml\" this.gameEntity["game"]
+		ckpathesc := StrReplace(ckpath,A_Space,"^ ")
+		If DirExist(ckpath)
+			return
+		this.gtext(2,"New game detected, installing Cockatrice for " this.gameEntity["game"] ".")		
+		DirCreate(ckpath)
+		RunCMD('"' A_ScriptDir '\tools\7za.exe" x "' A_ScriptDir '\tools\cockatrice.7z" "-o' ckpath '"')
+		FileCreateShortcut(A_ScriptDir "\cxml\" this.gameEntity["game"] "\cockatrice.exe",A_ScriptDir "\XML Creator - " this.gameEntity["game"] ".lnk")
+	}
 }
