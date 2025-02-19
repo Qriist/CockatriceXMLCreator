@@ -318,28 +318,20 @@ class CockatriceXMLCreator {
 			return " style=" chr(34) styleStr chr(34)
 	}
 	
-	uniqify(stripNonAlphanumeric := 1,normalizeCase := 1,params*){
+	uniqify(paramObj, stripNonAlphanumeric := 1,normalizeCase := 1){
 		;pass in any number of strings and objects to create a unique hash of all discovered text
 		;stripNonAlphanumeric removes all white space, punctuation, and special characters before hashing
 		;normalizeCase makes everything lowercase before hashing
-		for k,v in params
-			unique .= (IsObject(v)?json.dump(v):v)
+		unique := JSON.Dump(paramObj)
 		If (stripNonAlphanumeric = 1)
 			unique := RegExReplace(unique,"\W")
 		If (normalizeCase = 1)
 			unique := StrLower(unique)
-		;msgbox % unique
-		return ; LC_SHA512(unique)	;todo: acquire hash function
+		return api.hash(&unique)	;todo: acquire hash function
 	}
 	
 	;XML generation
-	generateXML(infoObj := []){
-		;ret := this.generateXML_header(infoObj)
-		;ret .= this.generateXML_sets()
-		;ret .= this.generateXML_cards()
-		;ret .= this.generateXML_footer()
-		;return ret
-		
+	generateXML(infoObj := Map()){
 		this.xmlInProgress := []
 		this.generateXML_header(infoObj)
 		this.generateXML_sets()
@@ -464,11 +456,6 @@ class CockatriceXMLCreator {
 					else
 						UnicodeStringNew .= "&#" checkOrd ";"
 			}
-			; if IfIn(checkOrd,specificOrds) || (checkOrd > 126){
-			; 	UnicodeStringNew .= "&#" checkOrd ";"
-			; }
-			; else 
-			; 	UnicodeStringNew .= a_loopfield
 		}
 		return UnicodeStringNew
 	}

@@ -2,3 +2,4 @@ lib/Aris
 cxml
 cache
 output
+*.lnk

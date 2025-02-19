@@ -1,19 +1,10 @@
 #Requires AutoHotkey v2.0
 #Include lib\CockatriceXMLCreator.ahk
 
-;generate monitor window
-gxml := Gui() ;todo - move this window into CockatriceXMLCreator
-gxml.Title := "YuGiOh XML Creator"
-gxml.Opt("+Resize +MinSize250")
-text1 := gxml.Add("Text","w300 BackgroundTrans center vtext1","")
-text2 := gxml.Add("Text","w300 BackgroundTrans center vtext2","Gathering card list...")
-text3 := gxml.Add("Text","w300 BackgroundTrans center vtext3","")
-gxml.Show("autosize center")
 
-;prepare starting environment
 cxml := CockatriceXMLCreator("Yu-Gi-Oh")
+cxml.gtext(2,"Gathering card list...")
 api := apiQache()
-; api.nuke(1)
 api.initExpiry(31536000000) ;1000 years is long enough to cache before we start re-burning api, right?
 storedCacheRevision := IniRead(A_ScriptDir "\XML Creator.ini","YuGiOh","ygorganization_X-Cache-Revision",0)
 
@@ -31,10 +22,10 @@ currentDBVer := JSON.Load(api.retrieve("https://db.ygoprodeck.com/api/v7/checkDB
 
 forceBurn := (storedDBVer[1]["last_update"]=currentDBVer[1]["last_update"]?unset:1)
 CardObj := JSON.Load(api.retrieve("https://db.ygoprodeck.com/api/v7/cardinfo.php?misc=yes",,,,,,forceBurn?))["data"]
-text2.text := "Gathering set list..."
+cxml.gtext(2,"Gathering set list...")
 setObj := JSON.Load(api.retrieve("https://db.ygoprodeck.com/api/v7/cardsets.php",,,,,,forceBurn?))
 
-text2.text := "Gathering manifest..."
+cxml.gtext(2,"Gathering manifest...")
 
 manifestStr := api.retrieve("https://db.ygorganization.com/manifest/" storedCacheRevision,,,,,,1)
 ; MsgBox api.lastResponseHeaders
@@ -56,7 +47,7 @@ LinkMarkers := fLinkMarkers()	;used for link monster arrows
 lists := yugiohLists(CardObj)
 
 ;processing sets
-text2.Text := "Processing sets..."
+cxml.gtext(2,"Processing sets...")
 for k,v in setobj{
 	record := setobj[k]
 	;set := record["set_name"]
@@ -83,9 +74,9 @@ for k,v in CardObj {
 	cxml.setCardProp("Konami_ID",record["misc_info"][1]["konami_id"])
     
     CurrentCardPercent := a_index / CardTotal
-    text1.Text := "Scraping data for..."
-    text2.Text := record["name"]
-    text3.Text := a_index " / " CardTotal " processed. (" (a_index/CardTotal*100) "%)"
+    cxml.gtext(1,"Scraping data for...")
+    cxml.gtext(2,record["name"])
+    cxml.gtext(3,a_index " / " CardTotal " processed. (" (a_index/CardTotal*100) "%)")
 
 	If (InStr(record["type"],"Monster"))
 	{
@@ -333,10 +324,8 @@ for k,v in CardObj {
 
 
 }
-outXml := cxml.generateXML()
-FileOpen(A_ScriptDir "\cxml\Yu-Gi-Oh\data\cards.xml","w").Write(outXml)
-; Sleep(3000)
-gxml.Destroy()
+cxml.generateXML()
+
 ExitApp
 
 
