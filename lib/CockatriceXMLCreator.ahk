@@ -6,7 +6,8 @@
 ; #include <Aris/Qriist/SqlarMultipleCiphers> ; github:Qriist/SqlarMultipleCiphers@v2.0.3+SqlarMultipleCiphers.ICU.7z --files *.*
 #include <Aris/Qriist/SQriLiteDB> ; github:Qriist/SQriLiteDB@v0.82.0 --main SQriLiteDB.ahk
 #include <Aris/SKAN/RunCMD> ; SKAN/RunCMD@aadeb56
-
+#include <Aris/Chunjee/adash> ; Chunjee/adash@v0.5.0
+#include <Aris/thqby/Base64> ; thqby/Base64@831e5e3
 class CockatriceXMLCreator {
     __New(incomingGameEntityName := "") {
         this.gameEntity := Map()
@@ -237,9 +238,9 @@ class CockatriceXMLCreator {
 		
 		rawData := Buffer(FileGetSize(imgPath))
 		FileOpen(imgPath,"r").RawRead(rawData)
-		; LC_Base64_Encode(img64, rawData, FileGetSize(imgPath))
-		this.base64[imgPath] := img64 := ""
-		return "<img" this.StyleOptions(styleObj) " src='data:image/png;base64," this.base64[imgPath] "' /></img>"
+		this.base64[imgPath] := Base64.Encode(rawData)
+		return "<img src='data:image/png;base64," this.base64[imgPath] "' /></img>"
+		; return "<img" this.StyleOptions(styleObj) " src='data:image/png;base64," this.base64[imgPath] "' /></img>"
 	}
 	embedComment(inText,&dedupe := ""){
 		;used to add invisible comments, usually when you need to add a search term without affecting game text

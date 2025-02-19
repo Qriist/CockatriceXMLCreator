@@ -64,6 +64,7 @@ deduped := Map()
 cxml.gtext(1,"Scraping card data for...")
 outpics := ""
 cardIndex := 0
+junk := Map()
 for k,v in sortedCardObj{
     dateObj := v
     for k,v in dateObj {
@@ -80,8 +81,7 @@ for k,v in sortedCardObj{
             try dupeChk[v] := record[v] 
         cardHash := cxml.uniqify(dupeChk)
         
-        ; Obj_Gui(record)
-        ; MsgBox
+
         ;by entering the cardHash as the entity name we can safely roll over the rest of the data without fear of overwriting data during XML generation. If we DO end up overwriting cards then just add more uniqify variables until we don't.
         ;notably, we are *not* setting the name until later
 		cxml.newCardEntity(cardHash)	;newCardEntity() doesn't overwrite
@@ -93,15 +93,20 @@ for k,v in sortedCardObj{
         setObj["num"] := record["number"]
 
         ;images can be attached to real sets thanks to cockatrice improvements
-        try setObj["picURL"] := record["images"]["large"] ;unconditionally set
+        try setObj["picURL"] := record["images"]["large"] ;unconditionally set to large
         setObj["picURL"] ??= record["images"]["small"]    ;use small if large not found
         setObj["uuid"] := api.hash(&f := "Pokemon" record["id"],"SHA512")
         
+        ;artist info, too
+        try setObj["artist"] := record["artist"]
+
         cxml.attachSetToCard(setId,setObj)
 
 		if deduped.has(cardHash)
 			Continue	;nothing further to do with a duped card now that we found the sets
         
+
+
         ;have to set the name to something sensible
         cxml.setMajorCardProp("name",record["name"] a_space StrUpper(record["id"]))
 
@@ -110,14 +115,129 @@ for k,v in sortedCardObj{
 
         ;process card data as normal.
 		cxml.setCardProp("maintype",record["supertype"])
-		; cxml.setCardProp("colors", st_glue(record["types"," "]))
-		; cxml.setCardProp("pt",record["hp"])
-        cxml.setMajorCardProp("text","placeholder")
+        t := ""
+        try for k,v in record["types"]
+            t .= v " "
+		cxml.setCardProp("colors", Trim(t))
+		try cxml.setCardProp("pt",record["hp"])
+        cxml.setMajorCardProp("text","")
+        try cxml.appendMajorCardProp("text",cxml.embedComment(record["artist"]))
+
+        try for k,v in record["legalities"] {
+            cxml.setCardProp("format-" k,v)
+        }
+        
+        switch record["supertype"] {
+            case "Pokémon":
+                ;has to have an html element first to ensure html rendering
+                cxml.setMajorCardProp("text",  cxml.colorizeText( "❤️" record["hp"],"tomato",1) "`n")
+                
+                if instr(record["name"],"leafeon")
+                    cxml.appendMajorCardProp("text",cxml.embedComment("exile target player's graveyard"))
+                
+                try cxml.setCardProp("Evolves_From",record["evolvesFrom"])
+                    ,cxml.appendMajorCardProp("text",cxml.embedComment("evolves from " record["evolvesFrom"]))
+                
+                If record.has("evolvesTo") {
+                    for k,v in record["evolvesTo"]
+                        cxml.appendMajorCardProp("text",cxml.embedComment("evolves to " v))
+                    cxml.setCardProp("Evolves_To", adash.join(record["evolvesTo"],", ") )
+                }
+                cxml.setCardProp("type", "Pokémon " cxml.ld() " " Trim(adash.join(record["subtypes"], " ") a_space adash.join(record["types"], " ")))
+
+                If record.has("ancientTrait"){
+                    tableObj := Map()
+                    tableObj[1] := Map()
+                    tableObj[1][1] := Map()
+					tableObj[1][1]["text"] := cxml.colorizeText(chr(160) "Ancient" chr(160) "Trait" chr(160),"White",1)
+					tableObj[1][1]["background-color"] := "DarkGoldenRod"
+					
+                    tableObj[2] := Map()
+                    tableObj[2][1] := Map()
+					tableObj[2][1]["text"] := record["ancientTrait"]["text"]
+					tableObj[2][1]["colspan"] := 2
+					;tableObj[1,2,"rowspan"] := 2
+					
+                    tableObj[1][2] := Map()
+					tableObj[1][2]["text"] := "<h3>" chr(160) chr(160) StrReplace(record["ancientTrait"]["name"]," ",chr(160)) chr(160) chr(160) "</h3>" cxml.embedComment(record["ancientTrait"]["name"]) cxml.embedComment("ancient trait")
+					tableObj[1][2]["text-align"] := "center"
+					tableObj[1][2]["vertical-align"] := "middle"
+					tableObj[1][2]["background-color"] := "DarkGoldenRod"
+					
+					;tableObj[3,1,"text"] := "."
+					;tableObj[2,3,"text"] := ""
+					;tableObj[2,1,"text"]  :
+					cxml.appendMajorCardProp("text", cxml.addTable(tableObj) "`n")
+                }
+                
+                ; MsgBox Obj_Gui(v)
+
+                try for k,v in record["abilities"] {
+                        ;prepare common table elements
+                        tableObj := Map()
+                        tableObj[1] := Map()
+                        tableObj[1][1] := Map()
+                        tableObj[1][1]["background-color"] := "#CD5C5C"
+                        tableObj[1][1]["text-align"] := "center"
+                        
+                        tableObj[1][2] := Map()
+                        tableObj[1][2]["text-align"] := "center"
+                        tableObj[1][2]["vertical-align"] := "middle"
+                        tableObj[1][2]["background-color"] := "#CD5C5C"
+                        
+                        tableObj[2] := Map()
+                        tableObj[2][1] := Map()
+                        tableObj[2][1]["colspan"] := 2
+                    switch v["type"] {
+                        case "Pokémon Power" :
+                            tableObj[1][1]["text"] := cxml.colorizeText(chr(160) "Pokémon" chr(160) "Power" chr(160),"White",1) cxml.embedComment("Pokemon Power") 
+							tableObj[1][2]["text"] :=  chr(160) chr(160) cxml.colorizeBackgroundAndText(StrReplace(v["name"]," ",chr(160)),"","white",1) chr(160) chr(160)  cxml.embedComment(v["name"])
+                            tableObj[2][1]["text"] := v["text"]
+                            cxml.appendMajorCardProp("text", cxml.addTable(tableObj) "`n")
+						case "Poké-Body": 
+                            tableObj[1][1]["text"] := cxml.colorizeText(chr(160) "Poké-Body" chr(160),"White",1) cxml.embedComment("Poke-Body") 
+							tableObj[1][2]["text"] :=  chr(160) chr(160) cxml.colorizeBackgroundAndText(v["name"],"","white",1) chr(160) chr(160)  cxml.embedComment(v["name"]) 
+                            tableObj[2][1]["text"] := v["text"]
+                            cxml.appendMajorCardProp("text", cxml.addTable(tableObj) "`n")
+						case "Poké-Power":
+                            tableObj[1][1]["text"] := cxml.colorizeText(chr(160) "Poké-Power" chr(160),"White",1) cxml.embedComment("Poke-Power") 
+							tableObj[1][2]["text"] :=  chr(160) chr(160) cxml.colorizeBackgroundAndText(v["name"],"","white",1) chr(160) chr(160)  cxml.embedComment(v["name"]) 
+							tableObj[2][1]["text"] := v["text"]
+                            cxml.appendMajorCardProp("text", cxml.addTable(tableObj) "`n")
+                        case "Ability":
+							tableObj[1][1]["text"] := cxml.colorizeText(chr(160) "Ability" chr(160),"White",1) 
+							tableObj[1][2]["text"] :=  chr(160) chr(160) cxml.colorizeBackgroundAndText(v["name"],"","white",1) chr(160) chr(160)  cxml.embedComment(v["name"]) 
+							tableObj[2][1]["text"] := v["text"]
+                            cxml.appendMajorCardProp("text", cxml.addTable(tableObj) "`n")
+                        default :
+                            MsgBox "Undefined ability type: " v["type"]
+                            ExitApp
+                    }
+
+                }
+                try for k,v in record["attacks"] {
+                    atkRecord := v
+                    tableObj := Map()
+                    tableObj[1] := Map()
+                    tableObj[1][1] := Map()
+                    tableObj[1][1]["text"] := ""    ;ensures the cell exists
+
+
+                    if (atkRecord["convertedEnergyCost"] != 0){
+                        for k,v in atkRecord["cost"]{
+                            asset := a_scriptdir "\assets\pokemon\energy\" v "_medium.png"
+                            tableObj[1][1]["text"] .= cxml.embedImage(asset) ;cxml.embedComment(v " Energy",cxml.getMajorCardProp("text"))
+                        }
+                    }
+                }
+        }
+        
     }
 }
+        ; Obj_Gui(junk)
+        ; MsgBox
 ; msgbox overallCount "`n" deduped.count
 cxml.generateXML()
-; Sleep(3000)
 ExitApp
 
 
