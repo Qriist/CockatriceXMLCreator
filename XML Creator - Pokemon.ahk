@@ -121,7 +121,6 @@ for k,v in sortedCardObj{
 		cxml.setCardProp("colors", Trim(t))
 		try cxml.setCardProp("pt",record["hp"])
         cxml.setMajorCardProp("text","")
-        try cxml.appendMajorCardProp("text",cxml.embedComment(record["artist"]))
 
         try for k,v in record["legalities"] {
             cxml.setCardProp("format-" k,v)
@@ -215,7 +214,8 @@ for k,v in sortedCardObj{
                     }
 
                 }
-                try for k,v in record["attacks"] {
+                if record.has("attacks")
+                for k,v in record["attacks"] {
                     atkRecord := v
                     tableObj := Map()
                     tableObj[1] := Map()
@@ -225,22 +225,113 @@ for k,v in sortedCardObj{
 
                     if (atkRecord["convertedEnergyCost"] != 0){
                         for k,v in atkRecord["cost"]{
+                            cxml.appendMajorCardProp("text",cxml.embedComment(v " Energy",cxml.getMajorCardProp("text")))
+                            if InStr(v,"free")
+                                continue
                             asset := a_scriptdir "\assets\pokemon\energy\" v "_medium.png"
                             tableObj[1][1]["text"] .= cxml.embedImage(asset) ;cxml.embedComment(v " Energy",cxml.getMajorCardProp("text"))
+                            ; tableObj[1][1]["text"] .= v "," ;cxml.embedComment(v " Energy",cxml.getMajorCardProp("text"))
                         }
                     }
+					tableObj[1][1]["text"] := "<h3>" cxml.colorizeBackgroundAndText(tableObj[1][1]["text"] (atkRecord["convertedEnergyCost"]!=0?Chr(160):"") StrReplace(atkRecord["name"]," ", Chr(160))  ,"#FBB917",,1) cxml.embedComment(atkRecord["name"]) "</h3>"
+					tableObj[1][1]["colspan"] := 2
+
+
+                    tableObj[2] := Map()
+                    tableObj[2][1] := Map()
+                    tableObj[2][1]["text"] := ""
+					if (atkRecord.has("damage")){
+						tableObj[2][1]["text"] :=  "Damage: " cxml.colorizeBackgroundAndText(atkRecord["damage"],,"red",1)
+						tableObj[1][1]["colspan"] := 2
+                        ; msgbox record["id"] "`n" tableObj[1][1]["text"]
+					}
+
+                    ;makes a new row so the following .count works correctly
+                    tableObj[tableObj.count+1] := Map()
+
+                    tableObj[tableObj.count][1] := Map()
+                    tableObj[tableObj.count][1]["text"] :=  rightpad((atkRecord["text"]!=""?atkRecord["text"]:"[No additional effects.]") a_space,75,Chr(160))
+					tableObj[tableObj.count][1]["colspan"] := 2
+                        
+                    colRowObj := Map()
+                    colRowObj["row"] := Map()
+                    colRowObj["row"][1] := Map()
+					colRowObj["row"][1]["background-color"] := "#FBB917"
+                    cxml.appendMajorCardProp("text",cxml.addTable(tableObj,colRowObj) "`n")
                 }
+                
+                ;building resist/weak/retreat table
+                tableObj := Map()
+
+                tableObj[1] := Map()
+                tableObj[2] := Map()
+
+                tableObj[1][1] := Map()
+                tableObj[1][2] := Map()
+                tableObj[1][3] := Map()
+
+                tableObj[2][1] := Map()
+                tableObj[2][2] := Map()
+                tableObj[2][3] := Map()
+                
+                tableObj[1][1]["text"] := chr(160) "Weaknesses" chr(160)
+                tableObj[1][1]["background-color"] := "#FADBD8"
+                tableObj[2][1]["background-color"] := "#FADBD8"
+                
+                tableObj[1][2]["text"] := chr(160) "Resistances" chr(160)
+                tableObj[1][2]["background-color"] := "#AED6F1"
+                tableObj[2][2]["background-color"] := "#AED6F1"
+
+                tableObj[1][3]["text"] := chr(160) "Retreat" chr(160)
+                tableObj[1][3]["background-color"] := "#D6DBDF"
+                tableObj[2][3]["background-color"] := "#D6DBDF"
+
+                try for k,v in record["resistances"] {
+                    tableObj[2][2]["text"] ??= ""
+                    tableObj[2][2]["text"] .= cxml.embedImage(a_scriptdir "\assets\pokemon\energy\" v["type"] "_small.png")
+                    tableObj[2][2]["text"] .= cxml.embedComment(v["type"]) 
+                }
+                try for k,v in record["weaknesses"] {
+                    tableObj[2][1]["text"] ??= ""
+                    tableObj[2][1]["text"] .= cxml.embedImage(a_scriptdir "\assets\pokemon\energy\" v["type"] "_small.png")
+                    tableObj[2][1]["text"] .= cxml.embedComment(v["type"]) 
+                }   
+                try for k,v in record["retreatCost"] {
+                    tableObj[2][3]["text"] ??= ""
+                    tableObj[2][3]["text"] .= cxml.embedImage(a_scriptdir "\assets\pokemon\energy\" v "_small.png")
+                    tableObj[2][3]["text"] .= cxml.embedComment(v) 
+                }
+                cxml.appendMajorCardProp("text",cxml.addTable(tableObj))
+            case "Energy","Trainer" :
+                cxml.setCardProp("type", record["supertype"]) ; " " (record["subtypes"].count()>0?cxml.ld() " " adash.join(record["subtypes"], " "):""))
+				listObj := Map()
+				try for k,v in record["rules"]{
+					listText := v
+					for k,v in energyObj{
+						if Instr(listText,v)
+							listText := StrReplace(listText,v,cxml.embedImage(a_scriptdir "\assets\pokemon\energy\" v "_tiny.png", 'height="20"' ) cxml.embedComment(v,listText))
+					}
+					listObj[listObj.count+1] := listText
+				}
+				cxml.appendMajorCardProp("text", cxml.addList(listObj) "`n")
+
         }
-        
+        try cxml.appendMajorCardProp("text",cxml.embedComment(record["artist"]))
     }
 }
-        ; Obj_Gui(junk)
-        ; MsgBox
-; msgbox overallCount "`n" deduped.count
 cxml.generateXML()
+Run(A_ScriptDir "\cxml\Pokemon\cockatrice.exe")
 ExitApp
 
-
+rightpad(input,num := 10,str := " "){
+    if (StrLen(input) > num)
+        return input
+    ret := input
+    loop {
+        ret .= str
+    }   until (StrLen(ret) > num)
+    return ret
+}
 ; procCard(cardObj){
 
 ; }

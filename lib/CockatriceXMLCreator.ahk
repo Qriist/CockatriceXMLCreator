@@ -232,7 +232,7 @@ class CockatriceXMLCreator {
 		;bodyStart := 
 		;bodyEnd := 
 	}
-	embedImage(imgPath,styleObj := ""){
+	embedImage(imgPath,styleObj?){
 		if this.base64.Has(imgPath)	;image already processed into memory
 			return "<img src='data:image/png;base64," this.base64[imgPath] "' /></img>"
 		
@@ -240,9 +240,8 @@ class CockatriceXMLCreator {
 		FileOpen(imgPath,"r").RawRead(rawData)
 		this.base64[imgPath] := Base64.Encode(rawData)
 		return "<img src='data:image/png;base64," this.base64[imgPath] "' /></img>"
-		; return "<img" this.StyleOptions(styleObj) " src='data:image/png;base64," this.base64[imgPath] "' /></img>"
 	}
-	embedComment(inText,&dedupe := ""){
+	embedComment(inText,dedupe := ""){
 		;used to add invisible comments, usually when you need to add a search term without affecting game text
 		;won't embed the comment if it exists in dedupe in order to save xml space
 		if !InStr(dedupe,inText)
@@ -264,29 +263,35 @@ class CockatriceXMLCreator {
 		body := "<table>"
 		loop tableObj.count {
 			rowIndex := a_index
+			trstyle := ""
+			try trstyle := A_Space this.StyleOptions(colRowObj["row"][rowIndex])
+			body .= "<tr " rowIndex trstyle ">"
 
 			; try
 			; body .= "<tr " colRowObj["row"][rowIndex] ">"
-			body .= "<tr " rowIndex ">"
+			; body .= "<tr " rowIndex ">"
 			loop tableObj[rowIndex].count{
 				colIndex := a_index
-				
+				colspan := ""
+				rowspan := ""
+
 				if tableObj[rowIndex][colIndex].has("colspan")
 					colspan := a_space "colspan=" tableObj[rowIndex][colIndex]["colspan"]
 				if tableObj[rowIndex][colIndex].has("rowspan")
 					rowspan := a_space "rowspan=" tableObj[rowIndex][colIndex]["rowspan"]
 				
-				try
-				for k,v in ["backgound-color"]["font-weight"]{
+				try for k,v in ["backgound-color"]["font-weight"]{
 					
 				}
 				; if (style != "")
 				; 	style := "style=" chr(34) style chr(34)
-				;if (tableObj[rowIndex,colIndex,"background-color"] != "")
-					;bgcolor := a_space "style=" chr(34) "background-color:" tableObj[rowIndex,colIndex,"background-color"] ";" chr(34)
+				if tableObj[rowIndex][colIndex].has("background-color")
+					bgcolor := a_space "style=" chr(34) "background-color:" tableObj[rowIndex][colIndex]["background-color"] ";" chr(34)
 				; try
-				; body .= "<td" colspan rowspan this.StyleOptions(tableObj[rowIndex][colIndex]) ">" tableObj[rowIndex][colIndex]["text"] "</td>"
-				body .= "<td" (IsSet(colspan)?colspan:"") (IsSet(rowspan)?rowspan:"") this.styleOptions(tableObj[rowIndex][colIndex]) ">" tableObj[rowIndex][colIndex]["text"] "</td>"
+				txt := ""
+				try txt := tableObj[rowIndex][colIndex]["text"]
+				body .= "<td" colspan rowspan this.StyleOptions(tableObj[rowIndex][colIndex]) ">" txt "</td>"
+				; body .= "<td" (IsSet(colspan)?colspan:"") (IsSet(rowspan)?rowspan:"") this.styleOptions(tableObj[rowIndex][colIndex]) ">" tableObj[rowIndex][colIndex]["text"] "</td>"
 				
 				;msgbox % "<td" colspan ">" tableObj[rowIndex,colIndex,"text"] "</td>"
 				style := colspan := ""	;reset values
@@ -301,6 +306,7 @@ class CockatriceXMLCreator {
 	addList(listObj,listType := "u"){
 		;creates an ordered or unordered list
 		;defaults to unordered, set listType to "o" to make an ordered list
+		outlist := ""
 		For k,v in listObj{
 			outList .= "<li>" v "</li>"
 		}
