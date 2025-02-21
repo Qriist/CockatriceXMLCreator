@@ -353,7 +353,8 @@ class CockatriceXMLCreator {
 		}
 
 		FileOpen(A_ScriptDir "\cxml\" this.gameEntity["game"] "\data\cards.xml","w").Write(xml)
-
+		FileCreateShortcut(A_ScriptDir "\cxml\" this.gameEntity["game"] "\cockatrice.exe",A_ScriptDir "\_XML Creator - " this.gameEntity["game"] ".lnk")
+		
 		;compress for release
 		;todo - optimize compress
 		DirCreate(A_ScriptDir "\output\")
@@ -489,6 +490,6 @@ class CockatriceXMLCreator {
 		this.gtext(2,"New game detected, installing Cockatrice for " this.gameEntity["game"] ".")		
 		DirCreate(ckpath)
 		RunCMD('"' A_ScriptDir '\tools\7za.exe" x "' A_ScriptDir '\tools\cockatrice.7z" "-o' ckpath '"')
-		FileCreateShortcut(A_ScriptDir "\cxml\" this.gameEntity["game"] "\cockatrice.exe",A_ScriptDir "\XML Creator - " this.gameEntity["game"] ".lnk")
+		FileCreateShortcut(A_ScriptDir "\cxml\" this.gameEntity["game"] "\cockatrice.exe",A_ScriptDir "\_XML Creator - " this.gameEntity["game"] ".lnk")
 	}
 }
