@@ -277,33 +277,38 @@ for k,v in sortedCardObj{
                 tableObj[1][1]["text"] := chr(160) "Weaknesses" chr(160)
                 tableObj[1][1]["background-color"] := "#FADBD8"
                 tableObj[2][1]["background-color"] := "#FADBD8"
-                
+                tableObj[2][1]["text"] := ""
+
                 tableObj[1][2]["text"] := chr(160) "Resistances" chr(160)
                 tableObj[1][2]["background-color"] := "#AED6F1"
                 tableObj[2][2]["background-color"] := "#AED6F1"
+                tableObj[2][2]["vertical-align"] := "middle"
+                tableObj[2][2]["text"] := ""
 
                 tableObj[1][3]["text"] := chr(160) "Retreat" chr(160)
                 tableObj[1][3]["background-color"] := "#D6DBDF"
                 tableObj[2][3]["background-color"] := "#D6DBDF"
+                tableObj[2][3]["text"] := ""
 
                 try for k,v in record["resistances"] {
-                    tableObj[2][2]["text"] ??= ""
+                    if (a_index > 1)
+                        tableObj[2][2]["text"] .= "<br>"
                     tableObj[2][2]["text"] .= cxml.embedImage(a_scriptdir "\assets\pokemon\energy\" v["type"] "_small.png")
-                    tableObj[2][2]["text"] .= cxml.embedComment(v["type"]) 
+                    tableObj[2][2]["text"] .= cxml.embedComment(v["type"])
+                    tableObj[2][2]["text"] .= " " v["value"]
                 }
                 try for k,v in record["weaknesses"] {
-                    tableObj[2][1]["text"] ??= ""
                     tableObj[2][1]["text"] .= cxml.embedImage(a_scriptdir "\assets\pokemon\energy\" v["type"] "_small.png")
                     tableObj[2][1]["text"] .= cxml.embedComment(v["type"]) 
                 }   
                 try for k,v in record["retreatCost"] {
-                    tableObj[2][3]["text"] ??= ""
                     tableObj[2][3]["text"] .= cxml.embedImage(a_scriptdir "\assets\pokemon\energy\" v "_small.png")
                     tableObj[2][3]["text"] .= cxml.embedComment(v) 
                 }
                 cxml.appendMajorCardProp("text",cxml.addTable(tableObj))
             case "Energy","Trainer" :
-                cxml.setCardProp("type", record["supertype"]) ; " " (record["subtypes"].count()>0?cxml.ld() " " adash.join(record["subtypes"], " "):""))
+                cxml.setCardProp("type", record["supertype"])
+                try cxml.appendCardProp("type",A_Space cxml.ld() a_space adash.join(record["subtypes"], " "))
 				listObj := Map()
 				try for k,v in record["rules"]{
 					listText := v

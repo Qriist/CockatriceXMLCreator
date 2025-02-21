@@ -355,9 +355,12 @@ class CockatriceXMLCreator {
 		FileOpen(A_ScriptDir "\cxml\" this.gameEntity["game"] "\data\cards.xml","w").Write(xml)
 
 		;compress for release
-		;todo - actually compress
+		;todo - optimize compress
 		DirCreate(A_ScriptDir "\output\")
-		FileOpen(A_ScriptDir "\output\" this.gameEntity["game"] ".xml","w").Write(xml)
+		try FileDelete(A_ScriptDir "\output\" this.gameEntity["game"] ".7z")
+		RunCMD(A_ScriptDir "\tools\7za.exe a " 
+			.	Chr(34) A_ScriptDir "\output\" this.gameEntity["game"] ".7z" Chr(34) A_Space
+			.	Chr(34) A_ScriptDir "\cxml\" this.gameEntity["game"] "\data\cards.xml" Chr(34) A_Space)
 		return
 	}
 	generateXML_header(infoObj := Map()){
@@ -450,7 +453,7 @@ class CockatriceXMLCreator {
 	
 		;msgbox % UnicodeString
 		UnicodeStringNew := ""
-		; VarSetCapacity(UnicodeStringNew,(StrLen(UnicodeString) * 8)) ;maybe speeds up building UnicodeStringNew
+		VarSetStrCapacity(&UnicodeStringNew,(StrLen(UnicodeString) * 8)) ;maybe speeds up building UnicodeStringNew
 		Loop Parse UnicodeString
 		{
 			checkOrd := ord(A_LoopField)
