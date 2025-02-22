@@ -2,7 +2,7 @@
 #Include lib\CockatriceXMLCreator.ahk
 cxml := CockatriceXMLCreator("Pokemon")
 api := apiQache()
-api.initExpiry(86400)
+api.initExpiry(82800)
 
 cxml.gtext(2,"Gathering energy types...")
 ;get energy types
