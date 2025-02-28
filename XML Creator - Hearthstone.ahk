@@ -2,7 +2,118 @@
 #Include lib\CockatriceXMLCreator.ahk
 cxml := CockatriceXMLCreator("Hearthstone")
 api := apiQache()
-api.initExpiry(2588400)	;30 days (-1 hour)
+api.initExpiry(82800)	;23 hours
+api.requestInterval(100)	;keeps from hammering the server on non-cache requests
+
+
+;navigating Blizzard's OAuth2 nonsense
+client := IniRead(A_ScriptDir "\auth\auth.ini","auth","Hearthstone_Client")
+secret := IniRead(A_ScriptDir "\auth\auth.ini","auth","Hearthstone_Secret")
+url := "https://oauth.battle.net/token"
+api.curl.SetOpt("URL",url)
+api.curl.SetOpt("USERNAME",client)
+api.curl.SetOpt("PASSWORD",secret)
+api.curl.SetHeaders(Map("Content-Type","application/x-www-form-urlencoded"))
+api.curl.SetPost("grant_type=client_credentials")
+api.curl.Sync()
+
+auth := JSON.load(api.curl.GetLastBody())
+headers := Map("Authorization","Bearer " auth["access_token"])
+
+; url := "https://d15f34w2p8l1cc.cloudfront.net/hearthstone/2e01a1623d42fb74581eeb12b5529a283f7dbbe33349e0e0e9caf922acc52da6.png"
+; ; url := "https://www.google.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png"
+; img := api.retrieve(url,headers,,,,,,1)
+; FileOpen(A_ScriptDir "\test.png","w").RawWrite(img)
+
+; ExitApp
+massCardObj := Map()
+cxml.gtext("2","Collecting raw card data...")
+loop {
+	url := "https://us.api.blizzard.com/hearthstone/cards?"
+		.	"collectible=0,1&"
+		.	"page=" a_index
+	; msgbox Type(api.retrieve(url,headers))
+	try rawObj := JSON.load(api.retrieve(url,headers))
+	catch 
+		msgbox a_index
+	cxml.gtext("3","Page " a_index "/" rawObj["pageCount"])
+	for k,v in rawObj["cards"]
+		massCardObj[v["id"]] := v
+} until (rawObj["page"] = rawObj["pageCount"])
+
+cxml.gtext("2","Collecting raw metadata...")
+url := "https://us.api.blizzard.com/hearthstone/metadata"
+rawMetaObj := JSON.load(api.retrieve(url,headers))
+
+/*	ID types found in card data:
+	cardSetId
+	cardTypeId
+	childIds
+	classId
+	copyOfCardId
+	keywordIds
+	minionTypeId
+	multiClassIds
+	multiTypeIds
+	parentId
+	rarityId
+	touristClassId
+*/
+lng := "en_US"
+idObj := Map()
+
+idObj["gameModes"] := Map()
+for k,v in rawMetaObj["types"] {
+	idObj["gameModes"][v["id"]] := r := Map()
+	r["id"] := v["id"]
+	r["name"] := v["name"][lng]
+	r["slug"] := v["slug"]
+}
+
+idObj["cardTypeId"] := Map()
+for k,v in rawMetaObj["types"] {
+	idObj["cardTypeId"][v["id"]] := r := Map()
+	r["id"] := v["id"]
+	r["name"] := v["name"][lng]
+	r["slug"] := v["slug"]
+}
+
+
+
+;begin processing card data
+for k,v in massCardObj {
+	record := v
+	switch record["cardTypeId"] {
+		case 3:
+		case 4:
+		case 5:
+		case 7:
+		case 10:
+		case 39:
+		case 40:
+		case 44:	;trinket
+		default:
+			; msgbox "unknown card type: " record["cardTypeId"] "`n" A_Clipboard := JSON.Dump(v)
+		A_Clipboard := v["image"][lng]
+		img := api.retrieve(v["image"][lng],headers,,,,,,1)
+		; if (Type(img) = "String")
+		; 	continue
+		; msgbox img
+		; msgbox img.size
+		if (InStr(StrGet(img,"utf-8"),"Denied"))
+			continue
+		FileOpen(A_ScriptDir "\test.png","w").RawWrite(img)
+		try msgbox StrGet(img,"utf-8")
+		
+		; api.curl.SetOpt("url",v["image"][lng],api.easy_handle)
+		; api.curl.WriteToFile(A_ScriptDir "\test.png",api.easy_handle)
+		; api.curl.Sync(api.easy_handle)
+		
+	}
+	
+}
+
+
 
 
 
