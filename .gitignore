@@ -1,7 +1,6 @@
 lib/Aris
 cxml
 cache
-output
 *.lnk
 auth
 temp
