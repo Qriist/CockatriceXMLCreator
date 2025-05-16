@@ -1,6 +1,7 @@
 ﻿#Requires AutoHotkey v2.0
 #include <Aris/G33kDude/cJson> ; G33kDude/cJson@2.1.0
 #include <Aris/Qriist/apiQache> ; github:Qriist/apiQache@v0.81.0 --main Lib\apiQache.ahk
+#include <Aris/Qriist/libmagic> ; github:Qriist/libmagic@v0.80.0 --main Lib\libmagic.ahk
 #include <Aris/Qriist/LibQurl> ; Qriist/LibQurl@v0.91.0
 #include <Aris/Qriist/Null> ; github:Qriist/Null@v1.0.0 --main Null.ahk
 ; #include <Aris/Qriist/SqlarMultipleCiphers> ; github:Qriist/SqlarMultipleCiphers@v2.0.3+SqlarMultipleCiphers.ICU.7z --files *.*
@@ -27,6 +28,9 @@ class CockatriceXMLCreator {
 		this.currentCardEntity := Map()
 		this.g()
 		this.checkForCkInstall()
+		this.tempFiles := []
+
+		OnExit(*) => this._cleanup()
     }
 	
 	
@@ -241,6 +245,17 @@ class CockatriceXMLCreator {
 		this.base64[imgPath] := Base64.Encode(rawData)
 		return "<img src='data:image/png;base64," this.base64[imgPath] "' /></img>"
 	}
+	embedPicURL(imgPath,styleObj?){
+		;PicURL embedding requires slightly different formatting,
+		;and is rare enough to justify not doing IsSet checks on every embed
+		if this.base64.Has(imgPath)	;image already processed into memory
+			return "data:image/png;base64," this.base64[imgPath] 
+		
+		rawData := Buffer(FileGetSize(imgPath))
+		FileOpen(imgPath,"r").RawRead(rawData)
+		this.base64[imgPath] := Base64.Encode(rawData)
+		return "data:image/png;base64," this.base64[imgPath] 
+	}
 	embedComment(inText,dedupe := ""){
 		;used to add invisible comments, usually when you need to add a search term without affecting game text
 		;won't embed the comment if it exists in dedupe in order to save xml space
@@ -325,17 +340,17 @@ class CockatriceXMLCreator {
 			return " style=" chr(34) styleStr chr(34)
 	}
 	
-	uniqify(paramObj, stripNonAlphanumeric := 1,normalizeCase := 1){
-		;pass in any number of strings and objects to create a unique hash of all discovered text
-		;stripNonAlphanumeric removes all white space, punctuation, and special characters before hashing
-		;normalizeCase makes everything lowercase before hashing
-		unique := JSON.Dump(paramObj)
-		If (stripNonAlphanumeric = 1)
-			unique := RegExReplace(unique,"\W")
-		If (normalizeCase = 1)
-			unique := StrLower(unique)
-		return api.hash(&unique)	;todo: acquire hash function
-	}
+uniqify(paramObj, stripNonAlphanumeric := 1,normalizeCase := 1){
+	;pass in any number of strings and objects to create a unique hash of all discovered text
+	;stripNonAlphanumeric removes all white space, punctuation, and special characters before hashing
+	;normalizeCase makes everything lowercase before hashing
+	unique := JSON.Dump(paramObj)
+	If (stripNonAlphanumeric = 1)
+		unique := RegExReplace(unique,"\W")
+	If (normalizeCase = 1)
+		unique := StrLower(unique)
+	return api.hash(&unique)	;todo: acquire hash function
+}
 	
 	;XML generation
 	generateXML(infoObj := Map()){
@@ -362,6 +377,11 @@ class CockatriceXMLCreator {
 		RunCMD(A_ScriptDir "\tools\7za.exe a " 
 			.	Chr(34) A_ScriptDir "\output\" this.gameEntity["game"] ".7z" Chr(34) A_Space
 			.	Chr(34) A_ScriptDir "\cxml\" this.gameEntity["game"] "\data\cards.xml" Chr(34) A_Space)
+		
+		;cleanup temp files
+		for k,v in this.tempFiles
+			try FileDelete(v)
+		this.tempFiles := []
 		return
 	}
 	generateXML_header(infoObj := Map()){
@@ -491,5 +511,42 @@ class CockatriceXMLCreator {
 		DirCreate(ckpath)
 		RunCMD('"' A_ScriptDir '\tools\7za.exe" x "' A_ScriptDir '\tools\cockatrice.7z" "-o' ckpath '"')
 		FileCreateShortcut(A_ScriptDir "\cxml\" this.gameEntity["game"] "\cockatrice.exe",A_ScriptDir "\_XML Creator - " this.gameEntity["game"] ".lnk")
+	}
+	autocrop(filepath){ ;autocrops borders, saving transparency
+		static magick := A_ScriptDir "\tools\ImageMagick\magick.exe"
+		SplitPath(filepath,,,&ext)
+		outpath := A_ScriptDir "\temp\" A_TickCount Random(1,9223372036854775807) "." ext
+		RunCMD('"' magick '" "' filepath '" -trim +repage "' outpath '"' )
+		this.tempFiles.Push(outpath)
+		return outpath
+	}
+	optimizePng(filepath){	;optimizes in place
+		static ect := A_ScriptDir "\tools\ect.exe"
+		RunCMD('"' ect '" -9 -strip --allfilters-b "' filepath '"')
+		return filepath
+	}
+	convertImageToJPG(filepath){
+		static magick := A_ScriptDir "\tools\ImageMagick\magick.exe"
+		SplitPath(filepath,,,&ext,&base)
+		outpath := A_ScriptDir "\temp\" A_TickCount Random(1,9223372036854775807) ".jpg"
+		RunCMD('"' magick '" "' filepath '" -trim +repage "' outpath '"' )
+		this.tempFiles.Push(outpath)
+		return outpath
+	}
+	resizeImage(filepath,height := "",width := ""){
+		static magick := A_ScriptDir "\tools\ImageMagick\magick.exe"
+		SplitPath(filepath,,,&ext,&base)
+		outpath := A_ScriptDir "\temp\" A_TickCount Random(1,9223372036854775807) "." ext
+		arg := '"' magick '" "' filepath '" -resize ' height 'x' width ' "' outpath '"' 
+		; msgbox arg
+		RunCMD(arg)
+		; MsgBox A_Clipboard := '"' magick '" "' filepath '" -resize ' height 'x' width A_Space '"' outpath '"' 
+		this.tempFiles.Push(outpath)
+		return outpath
+	}
+	_cleanup(){
+		for k,v in this.tempFiles
+			if FileExist(v)
+				FileDelete(v)
 	}
 }

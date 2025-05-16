@@ -1,10 +1,29 @@
 ﻿#Requires AutoHotkey v2.0
 #Include lib\CockatriceXMLCreator.ahk
+
 cxml := CockatriceXMLCreator("Hearthstone")
 api := apiQache()
 api.initExpiry(82800)	;23 hours
 api.requestInterval(100)	;keeps from hammering the server on non-cache requests
 
+; api.begin()
+; url := "https://www.google.com/images/branding/googlelogo/2x/googlelogo_light_color_272x92dp.png"
+; pic := api.asset(url)
+; if (api.lastServedSource = "server"){
+; 	filepath := A_ScriptDir "\" api.lastFingerprint ".png"
+; 	FileOpen(filepath,"w").RawWrite(pic)
+; 	filepath := cxml.autocrop(filepath)
+; 	filepath := cxml.optimizeImage(filepath)
+; 	api.asset(url,,,,,,,filepath)
+; }
+ 
+
+; ExitApp
+; filepath := A_ScriptDir "\temp\test.png"
+; api.sideload(cxml.optimizeImage(cxml.autocrop(filepath)),"test")
+; test := api.retrieve("glug",,,,,,,1,filepath)
+; msgbox api.lastServedSource ;"`n" test
+; ExitApp
 
 ;navigating Blizzard's OAuth2 nonsense
 client := IniRead(A_ScriptDir "\auth\auth.ini","auth","Hearthstone_Client")
@@ -27,7 +46,7 @@ headers := Map("Authorization","Bearer " auth["access_token"])
 
 ; ExitApp
 massCardObj := Map()
-cxml.gtext("2","Collecting raw card data...")
+cxml.gtext(2,"Collecting raw card data...")
 loop {
 	url := "https://us.api.blizzard.com/hearthstone/cards?"
 		.	"collectible=0,1&"
@@ -41,7 +60,7 @@ loop {
 		massCardObj[v["id"]] := v
 } until (rawObj["page"] = rawObj["pageCount"])
 
-cxml.gtext("2","Collecting raw metadata...")
+cxml.gtext(2,"Collecting raw metadata...")
 url := "https://us.api.blizzard.com/hearthstone/metadata"
 rawMetaObj := JSON.load(api.retrieve(url,headers))
 
@@ -79,10 +98,49 @@ for k,v in rawMetaObj["types"] {
 }
 
 
-
 ;begin processing card data
+lasttext := A_NowUTC
+cxml.gtext(1,"Processing card data...")
 for k,v in massCardObj {
 	record := v
+	; if (A_NowUTC > lasttext) {
+		cxml.gtext(2,v["name"][lng])
+		cxml.gtext(3, a_index " / " massCardObj.Count)
+		; lasttext := A_NowUTC
+	; }
+
+	;process images
+	images := []
+	try For k,v in record["image"]
+		images.Push(v)
+	try For k,v in record["imageGold"]
+		images.Push(v)
+
+	for k,v in images {
+		url := v
+		api.begin()
+		img := api.asset(url,headers)
+		mime := api.magic.mime(img)
+		Switch mime {
+			case "text/xml":
+				api.commit()
+				continue
+			case "image/png":
+				if (api.lastServedSource = "server"){
+					filepath := A_ScriptDir "\temp\temp_" a_index ".png"
+					cxml.gtext(2,record["name"][lng] "   [image " a_index "/" images.Length "]")
+					FileOpen(filepath,"w").RawWrite(img)
+					filepath := cxml.autocrop(filepath)
+					; filepath := cxml.optimizePng(filepath)
+					api.asset(url,headers,,,,Random(31536000,63072000),,filepath)
+					api.commit()
+				}
+			default:
+				msgbox "unknown type: " mime
+				ExitApp
+		}
+	}
+	
 	switch record["cardTypeId"] {
 		case 3:
 		case 4:
@@ -94,16 +152,37 @@ for k,v in massCardObj {
 		case 44:	;trinket
 		default:
 			; msgbox "unknown card type: " record["cardTypeId"] "`n" A_Clipboard := JSON.Dump(v)
-		A_Clipboard := v["image"][lng]
-		img := api.retrieve(v["image"][lng],headers,,,,,,1)
+		; A_Clipboard := v["image"]
+
+		; MsgBox Type(img)
+		; api.begin()
+		; if (api.lastServedSource = "server"){
+		; 	filepath := A_ScriptDir "\temp_" a_index ".png"
+		; 	; msgbox filepath
+		; 	fileObj := FileOpen(filepath,"w").RawWrite(img)
+		; 	; filepath := cxml.autocrop(filepath)
+		; 	; filepath := cxml.optimizeImage(filepath)
+		; 	; api.asset(url,,,,,,,filepath)
+		; }
+		; ; api.commit()
+		; ExitApp
 		; if (Type(img) = "String")
 		; 	continue
 		; msgbox img
 		; msgbox img.size
-		if (InStr(StrGet(img,"utf-8"),"Denied"))
-			continue
-		FileOpen(A_ScriptDir "\test.png","w").RawWrite(img)
-		try msgbox StrGet(img,"utf-8")
+		; msgbox NumGet(img,4,"UShort")
+		; msgbox NumGet(img,1,"UChar")
+		; if (api.lastServedSource = "server")
+		; MsgBox api.lastServedSource "`n" api.lastFingerprint 
+		; if (NumGet(img,4,"UShort") != "2573"){
+			; if (api.lastServedSource = "server")
+			; 	msgbox api.curl.GetInfo("RESPONSE_CODE",api.easy_handle)
+			; msgbox StrGet(img,"utf-8")
+			; continue
+		; }
+			
+		; FileOpen(A_ScriptDir "\test.png","w").RawWrite(img)
+		; try msgbox StrGet(img,"utf-8")
 		
 		; api.curl.SetOpt("url",v["image"][lng],api.easy_handle)
 		; api.curl.WriteToFile(A_ScriptDir "\test.png",api.easy_handle)
@@ -116,8 +195,10 @@ for k,v in massCardObj {
 
 
 
-
 ExitApp
+
+
+
 /*
 
 SetBatchLines -1
